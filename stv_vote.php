@@ -22,9 +22,11 @@ function stv_showthread_poll_results()
 	global $optionsarray;
 	global $polloptions;
 	global $totpercent;
-	if ($poll['stv'] && !$pollclosed) {
+	if ($poll['stv']) {
 		global $pollbox;
-		$polloptions = '<tr><td>You can\'t view the results yet because this is a single
+		$votesarray = explode("||~|~||", $poll['votes']);
+		$polloptions = '';
+		if (!$pollclosed) $polloptions = '<tr><td>You can\'t view the results yet because this is a single
 transferable vote poll and the poll is still open.</td></tr>';
 		for($i = 1; $i <= $poll['numoptions']; ++$i)
 		{
@@ -38,13 +40,21 @@ transferable vote poll and the poll is still open.</td></tr>';
 			);
 
 			$option = $parser->parse_message($optionsarray[$i-1], $parser_options);
-			$votes = '---';
+			if ($pollclosed) {
+				$votes = $votesarray[$i-1] ? 'winner' : '';
+				$optionbg = "trow2";
+			} else {
+				$votes = '---';
+				$optionbg = "trow1";
+			}
+
 			$totalvotes = '';
 			$number = $i;
-			$optionbg = "trow1";
 			$votestar = "";
 
-			eval("\$polloptions .= \"".$templates->get("showthread_poll_resultbit")."\";");
+			$polloptions .= '<tr><td align="right" class="'.$optionbg.'">' . $option .
+'</td><td class="'.$optionbg.'" colspan="3">' . $votes . '</td></tr>';
+		//	eval("\$polloptions .= \"".$templates->get("showthread_poll_resultbit")."\";");
 		}
 		eval("\$pollbox = \"".$templates->get("showthread_poll_results")."\";");
 	}
@@ -91,7 +101,6 @@ function stv_count($VOTES, $NUMCANDIDATES, $SEATS)
 {
 	$quota = intval(($NUMCANDIDATES / ($SEATS + 1)) + 1);
 
-	print "Quota is $quota<br>";
 	$winners = array();
 	$hopefuls = array();
 	for ($i=1; $i<=$NUMCANDIDATES; $i++) $hopefuls[(string)$i] = array();
@@ -102,10 +111,6 @@ function stv_count($VOTES, $NUMCANDIDATES, $SEATS)
 		$hopefuls[$opts[0]][] = $v;
 	}
 	while (count($winners) < $SEATS) {
-		print "<br><br>";
-		foreach ($hopefuls as $key => $val) {
-			print "$key: ".count($val)." votes<br>";
-		}
 		// find winners
 		do {
 			$did_find_winner = false;
@@ -126,7 +131,6 @@ function stv_count($VOTES, $NUMCANDIDATES, $SEATS)
 			}
 		} while ($did_find_winner);
 
-		print "Winners: ".implode(', ', $winners)."<br>";
 		// eliminate last position
 		$worst = null;
 		$lowest = 1000;
@@ -136,7 +140,6 @@ function stv_count($VOTES, $NUMCANDIDATES, $SEATS)
 				$worst = $key;
 			}
 		}
-		print "Culling $worst<br>";
 		foreach ($hopefuls[$worst] as $vote) {
 			passOnVote($vote, &$winners, &$hopefuls);
 		}
@@ -150,7 +153,6 @@ function stv_count($VOTES, $NUMCANDIDATES, $SEATS)
 		}
 	}
 
-	print "Winners: " . implode(',', $winners).'<br>';
 	return $winners;
 }
 
@@ -169,11 +171,13 @@ function stv_hook_polls_showresults_end()
 		$expiretime = $poll['dateline'] + $poll['timeout'];
 		$now = TIME_NOW;
 		if($poll['closed'] == 1 || $thread['closed'] == 1 || ($expiretime < $now && $poll['timeout'])) {
-			return;
+			$pollclosed = 1;
 		}
 		global $pollbox;
-		$polloptions = '<tr><td>You can\'t view the results yet because this is a single
+		$polloptions = '';
+		if (!$pollclosed) $polloptions = '<tr><td>You can\'t view the results yet because this is a single
 transferable vote poll and the poll is still open.</td></tr>';
+		$votesarray = explode("||~|~||", $poll['votes']);
 		for($i = 1; $i <= $poll['numoptions']; ++$i)
 		{
 			// Set up the parser options.
@@ -186,13 +190,20 @@ transferable vote poll and the poll is still open.</td></tr>';
 			);
 
 			$option = $parser->parse_message($optionsarray[$i-1], $parser_options);
-			$votes = '---';
+			if ($pollclosed) {
+				$votes = $votesarray[$i-1] ? 'winner' : '';
+				$optionbg = "trow2";
+			} else {
+				$votes = '---';
+				$optionbg = "trow1";
+			}
 			$totalvotes = '';
 			$number = $i;
-			$optionbg = "trow1";
 			$votestar = "";
 
-			eval("\$polloptions .= \"".$templates->get("polls_showresults_resultbit")."\";");
+			//eval("\$polloptions .= \"".$templates->get("polls_showresults_resultbit")."\";");
+			$polloptions .= '<tr><td align="right" class="'.$optionbg.'">' . $option .
+'</td><td class="'.$optionbg.'" colspan="3">' . $votes . '</td></tr>';
 		}
 	}
 }
@@ -209,6 +220,16 @@ function stv_hook_polls_showresults_start()
 			$votes[] = $a['votes'];
 		}
 		$winners = stv_count($votes, $poll['numoptions'], 2);
+		$haswon = array();
+		for ($i=1; $i<=$poll['numoptions']; $i++) {
+			if (in_array($i, $winners)) {
+				$haswon[] = 1;
+			} else {
+				$haswon[] = 0;
+			}
+		}
+		$poll['votes'] = implode('||~|~||', $haswon);
+		$db->query("UPDATE " . TABLE_PREFIX . "polls SET votes='" . $db->escape_string($poll['votes']) . "' WHERE pid=" . $poll['pid']);
 	}
 }
 
