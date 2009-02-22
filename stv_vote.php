@@ -9,6 +9,46 @@ $plugins->add_hook("polls_do_newpoll_end", "stv_hook_polls_do_newpoll_end");
 $plugins->add_hook("polls_load", "stv_hook_polls_load");
 $plugins->add_hook("polls_vote_process", "stv_hook_polls_vote_process");
 $plugins->add_hook("polls_showresults_start", "stv_hook_polls_showresults_start");
+$plugins->add_hook("polls_showresults_end", "stv_hook_polls_showresults_end");
+$plugins->add_hook("showthread_poll_results", "stv_showthread_poll_results");
+
+function stv_showthread_poll_results()
+{
+	global $pollclosed;
+	global $templates;
+	global $lang;
+	global $poll;
+	global $parser;
+	global $optionsarray;
+	global $polloptions;
+	global $totpercent;
+	if ($poll['stv'] && !$pollclosed) {
+		global $pollbox;
+		$polloptions = '<tr><td>You can\'t view the results yet because this is a single
+transferable vote poll and the poll is still open.</td></tr>';
+		for($i = 1; $i <= $poll['numoptions']; ++$i)
+		{
+			// Set up the parser options.
+			$parser_options = array(
+				"allow_html" => $forum['allowhtml'],
+				"allow_mycode" => $forum['allowmycode'],
+				"allow_smilies" => $forum['allowsmilies'],
+				"allow_imgcode" => $forum['allowimgcode'],
+				"filter_badwords" => 1
+			);
+
+			$option = $parser->parse_message($optionsarray[$i-1], $parser_options);
+			$votes = '---';
+			$totalvotes = '';
+			$number = $i;
+			$optionbg = "trow1";
+			$votestar = "";
+
+			eval("\$polloptions .= \"".$templates->get("showthread_poll_resultbit")."\";");
+		}
+		eval("\$pollbox = \"".$templates->get("showthread_poll_results")."\";");
+	}
+}
 
 function stv_hook_polls_do_newpoll_end()
 {
@@ -21,9 +61,10 @@ function stv_hook_polls_do_newpoll_end()
 	}
 }
 
-function stv_hook_polls_load(&$poll)
+function stv_hook_polls_load()
 {
 	global $db;
+	global $poll;
 	$r = $db->query("SELECT COUNT(*) as count FROM ".TABLE_PREFIX."stv_polls WHERE pid = ".intval($poll['pid']));
 	$poll['stv'] = $db->fetch_field($r, 'count');
 	$poll['multiple'] = 1;
@@ -34,7 +75,7 @@ function passOnVote($vote, &$winners, &$hopefuls) {
         do {
                 array_shift($opts);
                 if (count($opts) == 0) {
-                        // no further options in vote. Untransferrable
+                        // no further options in vote. Untransferable
                       //  $WASTED_VOTES++;
                         return false;
                 }
@@ -113,11 +154,53 @@ function stv_count($VOTES, $NUMCANDIDATES, $SEATS)
 	return $winners;
 }
 
+function stv_hook_polls_showresults_end()
+{
+	global $poll;
+	if ($poll['stv']) {
+		global $pollclosed;
+		global $templates;
+		global $lang;
+		global $parser;
+		global $optionsarray;
+		global $polloptions;
+		global $totpercent;
+		global $thread;
+		$expiretime = $poll['dateline'] + $poll['timeout'];
+		$now = TIME_NOW;
+		if($poll['closed'] == 1 || $thread['closed'] == 1 || ($expiretime < $now && $poll['timeout'])) {
+			return;
+		}
+		global $pollbox;
+		$polloptions = '<tr><td>You can\'t view the results yet because this is a single
+transferable vote poll and the poll is still open.</td></tr>';
+		for($i = 1; $i <= $poll['numoptions']; ++$i)
+		{
+			// Set up the parser options.
+			$parser_options = array(
+				"allow_html" => $forum['allowhtml'],
+				"allow_mycode" => $forum['allowmycode'],
+				"allow_smilies" => $forum['allowsmilies'],
+				"allow_imgcode" => $forum['allowimgcode'],
+				"filter_badwords" => 1
+			);
+
+			$option = $parser->parse_message($optionsarray[$i-1], $parser_options);
+			$votes = '---';
+			$totalvotes = '';
+			$number = $i;
+			$optionbg = "trow1";
+			$votestar = "";
+
+			eval("\$polloptions .= \"".$templates->get("polls_showresults_resultbit")."\";");
+		}
+	}
+}
+
 function stv_hook_polls_showresults_start()
 {
 	global $poll;
 	global $db;
-	global $poll;
 	// Do stv count of votes and shove into mybb_polls table
 	if ($poll['stv']) {
 		$query = $db->simple_select("stv_votes", "*", "pid='".intval($poll['pid'])."'");
@@ -165,7 +248,7 @@ function stv_vote_info()
 {
 	return array(
 		"name"			=> "STV vote",
-		"description"		=> "A new poll feature that uses the single transferrable vote system",
+		"description"		=> "A new poll feature that uses the single transferable vote system",
 		"website"		=> "http://www.iww.org",
 		"author"		=> "IWW",
 		"authorsite"		=> "http://www.iww.org",
@@ -192,6 +275,8 @@ function _template_showthread_poll_option_stv()
 	<td class="trow2" colspan="3">{$option}</td>
 	</tr>';
 }
+
+
 function stv_vote_activate()
 {
 	global $db;
@@ -201,9 +286,10 @@ function stv_vote_activate()
 	$find     = '#' . preg_quote(get_find_string()) . '#';
 	find_replace_templatesets('polls_newpoll', $find, get_replace_string(), 1);//FIXME Should raise error if this doesnt work
 
+	// and my lovely new templates
 	$newtemp = array(
 		"title" => 'showthread_poll_option_stv',
-		"template" => '<p>Hello',
+		"template" => $db->escape_string(_template_showthread_poll_option_stv()),
 		"sid" => -2,
 		"version" => 120,
 		"dateline" => time()
@@ -230,4 +316,3 @@ function stv_vote_deactivate()
 
 	find_replace_templatesets('polls_newpoll', $find, $replace, 0);
 }
-?>
