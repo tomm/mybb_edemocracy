@@ -63,11 +63,14 @@ transferable vote poll and the poll is still open.</td></tr>';
 function stv_hook_polls_do_newpoll_end()
 {
 	global $postoptions;
+	global $mybb;
 	if ($postoptions['stv'])
 	{
 		global $db;
 		global $pid;
-		$db->insert_query("stv_polls", array("pid" => $pid));
+		$seats = intval($mybb->input['stvseats']);
+		if (!$seats) $seats = 1;
+		$db->insert_query("stv_polls", array("pid" => $pid, "seats" => $seats));
 	}
 }
 
@@ -75,9 +78,13 @@ function stv_hook_polls_load()
 {
 	global $db;
 	global $poll;
-	$r = $db->query("SELECT COUNT(*) as count FROM ".TABLE_PREFIX."stv_polls WHERE pid = ".intval($poll['pid']));
-	$poll['stv'] = $db->fetch_field($r, 'count');
-	$poll['multiple'] = 1;
+	$r = $db->query("SELECT * FROM ".TABLE_PREFIX."stv_polls WHERE pid = ".intval($poll['pid']));
+	$a = $db->fetch_array($r);
+	if ($a) {
+		$poll['stv'] = true;
+		$poll['stvseats'] = $a['seats'];
+		$poll['multiple'] = 1;
+	}
 }
 
 function passOnVote($vote, &$winners, &$hopefuls) {
@@ -219,7 +226,7 @@ function stv_hook_polls_showresults_start()
 		while ($a = $db->fetch_array($query)) {
 			$votes[] = $a['votes'];
 		}
-		$winners = stv_count($votes, $poll['numoptions'], 2);
+		$winners = stv_count($votes, $poll['numoptions'], $poll['stvseats']);
 		$haswon = array();
 		for ($i=1; $i<=$poll['numoptions']; $i++) {
 			if (in_array($i, $winners)) {
@@ -306,6 +313,14 @@ function stv_vote_activate()
 	//add template modification
 	$find     = '#' . preg_quote(get_find_string()) . '#';
 	find_replace_templatesets('polls_newpoll', $find, get_replace_string(), 1);//FIXME Should raise error if this doesnt work
+	find_replace_templatesets('polls_newpoll',
+		'#' . preg_quote('<td class="trow1" valign="top"><strong>{$lang->options}</strong></td>') . '#',
+		'<tr><td class="trow1" valign="top"><strong>Number of seats contested (for STV)</strong></td>
+			<td class="trow1"><span class="smalltext">
+				<label><input type="text" class="textbox"
+name="stvseats" size="10" value="1"></label></span>
+			</td></tr>
+		<td class="trow1" valign="top"><strong>{$lang->options}</strong></td>', 1);
 
 	// and my lovely new templates
 	$newtemp = array(
@@ -319,7 +334,7 @@ function stv_vote_activate()
 
 	//FIXME these need keys, and need to think about nulls and defaults
 	//TODO needs tested on non-MySQL databases
-	$db->query("CREATE TABLE IF NOT EXISTS " . TABLE_PREFIX . "stv_polls\n(pid int(10) PRIMARY KEY)");
+	$db->query("CREATE TABLE IF NOT EXISTS " . TABLE_PREFIX . "stv_polls\n(pid int(10) PRIMARY KEY, seats int(10) NOT NULL)");
 	$db->query("CREATE TABLE IF NOT EXISTS " . TABLE_PREFIX . "stv_voted\n(pid int(10),\nuid int(10))");
 	$db->query("CREATE TABLE IF NOT EXISTS " . TABLE_PREFIX .
 			"stv_votes\n(stv_vid int(10) PRIMARY KEY AUTO_INCREMENT,\npid int(10),\nvotes varchar(64),\ndateline bigint(30))"); // votes is string ordered first preference voteoption first. eg: "5,3,7,8"
