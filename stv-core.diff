@@ -1,100 +1,100 @@
-diff -r -u ../mybb/polls.php Upload/polls.php
---- ../mybb/polls.php	2009-02-22 16:38:36.000000000 +0000
-+++ Upload/polls.php	2008-11-27 07:43:59.000000000 +0000
-@@ -268,7 +268,6 @@
+diff -r -u Upload/polls.php ../mybb/polls.php
+--- Upload/polls.php	2008-11-27 07:43:59.000000000 +0000
++++ ../mybb/polls.php	2009-02-22 16:38:36.000000000 +0000
+@@ -268,6 +268,7 @@
  
  	$query = $db->simple_select("polls", "*", "pid='$pid'");
  	$poll = $db->fetch_array($query);
--	$plugins->run_hooks("polls_load");
++	$plugins->run_hooks("polls_load");
  
  	$query = $db->simple_select("threads", "*", "poll='$pid'");
  	$thread = $db->fetch_array($query);
-@@ -429,7 +428,6 @@
+@@ -428,6 +429,7 @@
  
  	$query = $db->simple_select("polls", "*", "pid='".intval($mybb->input['pid'])."'");
  	$poll = $db->fetch_array($query);
--	$plugins->run_hooks("polls_load");
++	$plugins->run_hooks("polls_load");
  
  	$query = $db->simple_select("threads", "*", "poll='".intval($mybb->input['pid'])."'");
  	$thread = $db->fetch_array($query);
-@@ -566,7 +564,6 @@
+@@ -564,6 +566,7 @@
  {
  	$query = $db->simple_select("polls", "*", "pid='".intval($mybb->input['pid'])."'");
  	$poll = $db->fetch_array($query);
--	$plugins->run_hooks("polls_load");
++	$plugins->run_hooks("polls_load");
  	$tid = $poll['tid'];
  	$query = $db->simple_select("threads", "*", "tid='$tid'");
  	$thread = $db->fetch_array($query);
-@@ -725,7 +722,6 @@
+@@ -722,6 +725,7 @@
  {
  	$query = $db->simple_select("polls", "*", "pid='".intval($mybb->input['pid'])."'");
  	$poll = $db->fetch_array($query);
--	$plugins->run_hooks("polls_load");
++	$plugins->run_hooks("polls_load");
  	$poll['timeout'] = $poll['timeout']*60*60*24;
  
  	$plugins->run_hooks("polls_vote_start");
-@@ -839,4 +835,4 @@
+@@ -835,4 +839,4 @@
  	redirect(get_thread_link($poll['tid']), $lang->redirect_votethanks);
  }
  
 -?>
-+?>
 \ No newline at end of file
++?>
 Only in ../mybb: .polls.php.swp
-diff -r -u ../mybb/showthread.php Upload/showthread.php
---- ../mybb/showthread.php	2009-02-22 18:24:57.000000000 +0000
-+++ Upload/showthread.php	2008-11-27 07:45:18.000000000 +0000
-@@ -295,7 +295,6 @@
+diff -r -u Upload/showthread.php ../mybb/showthread.php
+--- Upload/showthread.php	2008-11-27 07:45:18.000000000 +0000
++++ ../mybb/showthread.php	2009-02-22 18:24:57.000000000 +0000
+@@ -295,6 +295,7 @@
  		);
  		$query = $db->simple_select("polls", "*", "pid='".$thread['poll']."'", $options);
  		$poll = $db->fetch_array($query);
--		$plugins->run_hooks("polls_load");
++		$plugins->run_hooks("polls_load");
  		$poll['timeout'] = $poll['timeout']*60*60*24;
  		$expiretime = $poll['dateline'] + $poll['timeout'];
  		$now = TIME_NOW;
-@@ -303,7 +302,6 @@
+@@ -302,6 +303,7 @@
  		// If the poll or the thread is closed or if the poll is expired, show the results.
  		if($poll['closed'] == 1 || $thread['closed'] == 1 || ($expiretime < $now && $poll['timeout'] > 0))
  		{
--			$pollclosed = 1;
++			$pollclosed = 1;
  			$showresults = 1;
  		}
  
-@@ -330,17 +328,6 @@
+@@ -328,6 +330,17 @@
  		$polloptions = '';
  		$totalvotes = 0;
  
--		if (($poll['stv']) && !$alreadyvoted) {
--			$polloptions .= "<tr><td colspan=\"2\">
--				This poll is using the single transferrable vote system.
--				Enter '1' next to the candidate who is your
--				first choice then enter '2' next to the
--				candidate who is your second choice and so on.
--				You can enter as many choices as you wish but
--				you must number them in order.
--			</td></tr>";
--		}
--
++		if (($poll['stv']) && !$alreadyvoted) {
++			$polloptions .= "<tr><td colspan=\"2\">
++				This poll is using the single transferrable vote system.
++				Enter '1' next to the candidate who is your
++				first choice then enter '2' next to the
++				candidate who is your second choice and so on.
++				You can enter as many choices as you wish but
++				you must number them in order.
++			</td></tr>";
++		}
++
  		for($i = 1; $i <= $poll['numoptions']; ++$i)
  		{
  			$poll['totvotes'] = $poll['totvotes'] + $votesarray[$i-1];
-@@ -392,10 +379,7 @@
+@@ -379,7 +392,10 @@
  			}
  			else
  			{
--				if($poll['stv']) {
--					eval("\$polloptions .= \"".$templates->get("showthread_poll_option_stv")."\";");
--				}
--				elseif($poll['multiple'] == 1)
-+				if($poll['multiple'] == 1)
+-				if($poll['multiple'] == 1)
++				if($poll['stv']) {
++					eval("\$polloptions .= \"".$templates->get("showthread_poll_option_stv")."\";");
++				}
++				elseif($poll['multiple'] == 1)
  				{
  					eval("\$polloptions .= \"".$templates->get("showthread_poll_option_multiple")."\";");
  				}
-@@ -1057,4 +1041,4 @@
+@@ -1041,4 +1057,4 @@
  	}
  	return $posts;
  }
 -?>
-+?>
 \ No newline at end of file
++?>
 Only in ../mybb: .showthread.php.swp
