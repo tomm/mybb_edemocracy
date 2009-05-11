@@ -56,6 +56,7 @@ transferable vote poll and the poll is still open.</td></tr>';
 '</td><td class="'.$optionbg.'" colspan="3">' . $votes . '</td></tr>';
 		//	eval("\$polloptions .= \"".$templates->get("showthread_poll_resultbit")."\";");
 		}
+		$lang->total_votes = sprintf("%d votes", $poll['numvotes']);
 		eval("\$pollbox = \"".$templates->get("showthread_poll_results")."\";");
 	}
 }
@@ -134,9 +135,13 @@ function stv_count($VOTES, $NUMCANDIDATES, $SEATS)
 						}
 					}
 					unset ($hopefuls[$candidate]);
+					$did_find_winner = true;
+					break;
 				}
 			}
-		} while ($did_find_winner);
+		} while ($did_find_winner and (count($winners) < $SEATS));
+
+		if (count($winners) == $SEATS) break;
 
 		// eliminate last position
 		$worst = null;
